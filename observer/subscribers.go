@@ -1,11 +1,20 @@
 package observer
 
-import "fmt"
+import (
+	"fmt"
+	"path/filepath"
+
+	"github.com/gen2brain/beeep"
+)
 
 type PathIndexer struct{}
 
-func (pi *PathIndexer) receive(path, event string) {
-	fmt.Printf("Indexing: %v, %v\n", path, event)
+func (pi *PathIndexer) receive(filePath, event string) {
+	_, basename := filepath.Split(filePath)
+	err := beeep.Notify(event, "Resource: "+basename, "assets/watch_icon.png")
+	if err != nil {
+		panic(err)
+	}
 }
 
 type PathFileMD5 struct{}
