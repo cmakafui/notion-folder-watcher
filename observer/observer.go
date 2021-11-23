@@ -11,12 +11,12 @@ import (
 type Publisher interface {
 	Register(subscriber *Subscriber)
 	Unregister(subscriber *Subscriber)
-	notify(path, event string)
+	notify(path string)
 	Observe()
 }
 
 type Subscriber interface {
-	receive(path, event string)
+	receive(path string)
 }
 
 // PathWatcher observes changes in the file system and works as a Publisher for
@@ -47,9 +47,9 @@ func (pw *PathWatcher) Unregister(subscriber *Subscriber) {
 
 // notify subscribers that a event has happened, passing the path and the type
 // of event as message.
-func (pw *PathWatcher) notify(path, event string) {
+func (pw *PathWatcher) notify(path string) {
 	for _, sub := range pw.subscribers {
-		(*sub).receive(path, event)
+		(*sub).receive(path)
 	}
 }
 
@@ -60,7 +60,7 @@ func (pw *PathWatcher) AddPath(watcher *fsnotify.Watcher, path string) {
 	}
 
 	for _, file := range files {
-		pw.notify(file.Name(), "INITAL")
+		pw.notify(file.Name())
 	}
 	watcher.Add(path)
 }
@@ -84,7 +84,7 @@ func (pw *PathWatcher) Observe() {
 			select {
 			case event := <-watcher.Events:
 				if event.Op&fsnotify.Create == fsnotify.Create {
-					pw.notify(event.Name, event.Op.String())
+					pw.notify(event.Name)
 				}
 			case err := <-watcher.Errors:
 				fmt.Println("Error", err)

@@ -1,4 +1,4 @@
-package notion
+package api
 
 import (
 	"context"
