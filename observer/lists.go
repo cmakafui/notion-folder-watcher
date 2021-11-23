@@ -17,22 +17,22 @@ type ListWatcher interface {
 	receive(path, event string)
 }
 
-type List struct {
-	name        string
-	database_id string
-	folders     []string
-	client      *notionapi.Client
+type ListItem struct {
+	Name       string
+	DatabaseID string
+	folders    []string
+	Client     *notionapi.Client
 }
 
-func (ll *List) ChangeName(name string) {
-	ll.name = name
+func (ll *ListItem) ChangeName(name string) {
+	ll.Name = name
 }
 
-func (ll *List) AddFolder(path string) {
+func (ll *ListItem) AddFolder(path string) {
 	ll.folders = append(ll.folders, path)
 }
 
-func (ll *List) RemoveFolder(path string) {
+func (ll *ListItem) RemoveFolder(path string) {
 	length := len(ll.folders)
 
 	for i, folder := range ll.folders {
@@ -44,14 +44,14 @@ func (ll *List) RemoveFolder(path string) {
 	}
 }
 
-func (ll *List) receive(filePath string) {
+func (ll *ListItem) receive(filePath string) {
 	path, basename := filepath.Split(filePath)
 
 	for _, folder := range ll.folders {
 		if folder == path {
 			time.Sleep(300 * time.Millisecond)
 
-			url, err := api.CreatePage(ll.database_id, basename, ll.client)
+			url, err := api.CreatePage(ll.DatabaseID, basename, ll.Client)
 			if err != nil {
 				log.Println(err)
 			}

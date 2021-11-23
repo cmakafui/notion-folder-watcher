@@ -8,7 +8,7 @@ import (
 
 // Entry in Notion Database
 
-func CreateDB(name string, page_id notionapi.PageID, client *notionapi.Client) (string, error) {
+func CreateDB(name string, page_id string, client *notionapi.Client) (string, error) {
 
 	db := struct {
 		request *notionapi.DatabaseCreateRequest
@@ -16,7 +16,7 @@ func CreateDB(name string, page_id notionapi.PageID, client *notionapi.Client) (
 		request: &notionapi.DatabaseCreateRequest{
 			Parent: notionapi.Parent{
 				Type:   notionapi.ParentTypePageID,
-				PageID: page_id,
+				PageID: notionapi.PageID(page_id),
 			},
 			Title: []notionapi.RichText{
 
@@ -55,11 +55,11 @@ func CreateDB(name string, page_id notionapi.PageID, client *notionapi.Client) (
 	}
 
 	got.Properties = nil
-	return got.Title[0].PlainText, nil
+	return got.ID.String(), nil
 
 }
 
-func UpdateDB(name string, db_id notionapi.DatabaseID, client *notionapi.Client) (string, error) {
+func UpdateDB(name string, db_id notionapi.DatabaseID, client *notionapi.Client) error {
 
 	db := struct {
 		request *notionapi.DatabaseUpdateRequest
@@ -76,13 +76,12 @@ func UpdateDB(name string, db_id notionapi.DatabaseID, client *notionapi.Client)
 	}
 
 	// Change Database Name
-	got, err := client.Database.Update(context.Background(), db_id, db.request)
+	_, err := client.Database.Update(context.Background(), db_id, db.request)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	got.Properties = nil
-	return got.Title[0].PlainText, nil
+	return nil
 
 }
 
