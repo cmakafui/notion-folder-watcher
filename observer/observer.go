@@ -2,6 +2,8 @@ package observer
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -52,6 +54,14 @@ func (pw *PathWatcher) notify(path, event string) {
 }
 
 func (pw *PathWatcher) AddPath(watcher *fsnotify.Watcher, path string) {
+	files, err := ioutil.ReadDir(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, file := range files {
+		pw.notify(file.Name(), "INITAL")
+	}
 	watcher.Add(path)
 }
 
@@ -59,7 +69,7 @@ func (pw *PathWatcher) AddPath(watcher *fsnotify.Watcher, path string) {
 func (pw *PathWatcher) Observe() {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		fmt.Println("Error", err)
+		log.Fatal(err)
 	}
 	defer watcher.Close()
 
