@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/cmakafui/notion-folder-watcher/api"
@@ -33,6 +34,14 @@ type WatchIndexer struct{}
 
 func (wi *WatchIndexer) receive(filePath string) {
 	folderpath, basename := filepath.Split(filePath)
+
+	ext := filepath.Ext(basename)
+
+	// Check if it's directory (could be a file without extention - edge case)
+	if ext == "" {
+		ext = "Directory"
+	}
+	name := strings.TrimSuffix(basename, ext)
 	// Remove trailing \
 	folderpath = folderpath[:len(folderpath)-1]
 	for _, element := range box {
@@ -41,7 +50,7 @@ func (wi *WatchIndexer) receive(filePath string) {
 			if folder == folderpath {
 				// Create page in a database in notion
 				time.Sleep(300 * time.Millisecond)
-				_, err := api.CreatePage(element.DatabaseID, basename, client)
+				_, err := api.CreatePage(element.DatabaseID, name, ext, client)
 				if err != nil {
 					SendNotification("Error", "Could not send update to notion database")
 					continue
@@ -184,6 +193,7 @@ func onReady() {
 				db_id, err1 := api.CreateDB(response, page_id, client)
 				if err1 != nil {
 					SendNotification("Error", "Could not create database on Notion")
+					fmt.Println(err1)
 					continue
 				}
 

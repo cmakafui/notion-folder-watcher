@@ -29,6 +29,9 @@ func CreateDB(name string, page_id string, client *notionapi.Client) (string, er
 				"Name": notionapi.TitlePropertyConfig{
 					Type: notionapi.PropertyConfigTypeTitle,
 				},
+				"Type": notionapi.RichTextPropertyConfig{
+					Type: notionapi.PropertyConfigTypeRichText,
+				},
 				"Tags": notionapi.MultiSelectPropertyConfig{
 					ID:          ";s|V",
 					Type:        notionapi.PropertyConfigTypeMultiSelect,
@@ -42,7 +45,7 @@ func CreateDB(name string, page_id string, client *notionapi.Client) (string, er
 				"Rating": notionapi.SelectPropertyConfig{
 					ID:     "rating",
 					Type:   notionapi.PropertyConfigTypeSelect,
-					Select: notionapi.Select{Options: []notionapi.Option{{ID: "id", Name: "Rating"}}},
+					Select: notionapi.Select{Options: []notionapi.Option{{ID: "id", Name: "Ratings"}}},
 				},
 			},
 		},
@@ -85,7 +88,7 @@ func UpdateDB(name string, db_id notionapi.DatabaseID, client *notionapi.Client)
 
 }
 
-func CreatePage(db_id string, name string, client *notionapi.Client) (string, error) {
+func CreatePage(db_id string, name string, extension string, client *notionapi.Client) (string, error) {
 
 	page := struct {
 		request *notionapi.PageCreateRequest
@@ -99,6 +102,11 @@ func CreatePage(db_id string, name string, client *notionapi.Client) (string, er
 				"Name": notionapi.TitleProperty{
 					Title: []notionapi.RichText{
 						{Text: notionapi.Text{Content: name}},
+					},
+				},
+				"Type": notionapi.RichTextProperty{
+					RichText: []notionapi.RichText{
+						{Text: notionapi.Text{Content: extension}},
 					},
 				},
 			},
