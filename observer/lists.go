@@ -20,7 +20,7 @@ type ListWatcher interface {
 type ListItem struct {
 	Name       string
 	DatabaseID string
-	folders    []string
+	Folders    []string
 	Client     *notionapi.Client
 }
 
@@ -29,16 +29,16 @@ func (ll *ListItem) ChangeName(name string) {
 }
 
 func (ll *ListItem) AddFolder(path string) {
-	ll.folders = append(ll.folders, path)
+	ll.Folders = append(ll.Folders, path)
 }
 
 func (ll *ListItem) RemoveFolder(path string) {
-	length := len(ll.folders)
+	length := len(ll.Folders)
 
-	for i, folder := range ll.folders {
+	for i, folder := range ll.Folders {
 		if folder == path {
-			ll.folders[i] = ll.folders[length-1]
-			ll.folders = ll.folders[:length-1]
+			ll.Folders[i] = ll.Folders[length-1]
+			ll.Folders = ll.Folders[:length-1]
 			break
 		}
 	}
@@ -47,7 +47,7 @@ func (ll *ListItem) RemoveFolder(path string) {
 func (ll *ListItem) receive(filePath string) {
 	path, basename := filepath.Split(filePath)
 
-	for _, folder := range ll.folders {
+	for _, folder := range ll.Folders {
 		if folder == path {
 			time.Sleep(300 * time.Millisecond)
 

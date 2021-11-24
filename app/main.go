@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/cmakafui/notion-folder-watcher/api"
@@ -23,12 +24,74 @@ var box map[string]*observer.ListItem
 var notion_token string
 var page_id string
 
+var client *notionapi.Client
+
+var pathWatcher Publisher = &PathWatcher{}
+var watchIndexer Subscriber = &WatchIndexer{}
+
+type WatchIndexer struct{}
+
+func (wi *WatchIndexer) receive(filePath string) {
+	folderpath, basename := filepath.Split(filePath)
+	// Remove trailing \
+	folderpath = folderpath[:len(folderpath)-1]
+	for _, element := range box {
+		for _, folder := range element.Folders {
+
+			if folder == folderpath {
+				// Create page in a database in notion
+				time.Sleep(300 * time.Millisecond)
+				_, err := api.CreatePage(element.DatabaseID, basename, client)
+				if err != nil {
+					SendNotification("Error", "Could not send update to notion database")
+					continue
+				}
+				SendNotification("Success", "Pushed "+basename+" to notion")
+			}
+
+		}
+	}
+
+}
+
 func main() {
 
 	// Initialize config env variables if they don't exist
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
+	if _, err := os.Stat(".env"); err == nil {
+		err := godotenv.Load()
+		if err != nil {
+			log.Fatal("Error loading .env file")
+		}
+
+		// Notion Integration variables
+		notion_token = os.Getenv("NOTION_TOKEN")
+		page_id = os.Getenv("PAGE_ID")
+	} else {
+		response_token, response_token_bool, err := dlgs.Entry("Notion Folder Watcher", "Paste Notion Integration Token here", "")
+		if err != nil {
+			panic(err)
+		}
+		response_page, response_page_bool, err := dlgs.Entry("Notion Folder Watcher", "Paste Main Page ID here", "")
+		if err != nil {
+			panic(err)
+		}
+		if response_token_bool && response_page_bool {
+			notion_token = response_token
+			page_id = response_page
+
+			env, err := godotenv.Unmarshal("NOTION_TOKEN=" + notion_token + "\nPAGE_ID=" + page_id)
+			if err != nil {
+				panic(err)
+			}
+			err1 := godotenv.Write(env, "./.env")
+			if err1 != nil {
+				panic(err)
+			}
+		} else {
+			// Exit
+			systray.Quit()
+		}
+
 	}
 
 	onExit := func() {
@@ -41,31 +104,36 @@ func main() {
 		fmt.Println(now)
 	}
 
+	pathWatcher.Register(&watchIndexer)
+
+	go pathWatcher.Observe()
+
 	systray.Run(onReady, onExit)
-	// var pathWatcher observer.Publisher = &observer.PathWatcher{
-	// 	Path: "../",
-	// }
-
-	// var pathIndexer observer.Subscriber = &observer.PathIndexer{}
-	// pathWatcher.Register(&pathIndexer)
-
-	// pathWatcher.Observe()
 }
 
 func onReady() {
 
-	// Notion Integration variables
-	notion_token = os.Getenv("NOTION_TOKEN")
-	page_id = os.Getenv("PAGE_ID")
-
-	// Initialize box to track notion lists
-	box = make(map[string]*observer.ListItem)
+	// Initialize box to track notion lists if config.json doesn't exist
+	if _, err := os.Stat("config.json"); err == nil {
+		jsonFile, err := os.Open("config.json")
+		if err != nil {
+			fmt.Println(err)
+		}
+		defer jsonFile.Close()
+		byteValue, _ := ioutil.ReadAll(jsonFile)
+		json.Unmarshal([]byte(byteValue), &box)
+	} else {
+		box = make(map[string]*observer.ListItem)
+	}
 
 	// Initialize string slice to track database names
 	db_names := []string{}
+	for key := range box {
+		db_names = append(db_names, key)
+	}
 
 	// Initialize Notion client
-	client := notionapi.NewClient(notionapi.Token(notion_token))
+	client = notionapi.NewClient(notionapi.Token(notion_token))
 
 	systray.SetIcon(icon.Data)
 	systray.SetTitle("Notion Folder Watcher")
@@ -82,9 +150,21 @@ func onReady() {
 	// Sets the icon of a menu item. Only available on Mac and Windows.
 	mQuit.SetIcon(icon.Data)
 
-	mAddFolder.Disable()
 	mLists.Disable()
+	mAddFolder.Disable()
 	mFolders.Disable()
+
+	// Add submenu items to systray if they already exist
+	for key, element := range box {
+		mLists.Enable()
+		mAddFolder.Enable()
+		mLists.AddSubMenuItem(key, "Notion Database")
+		for _, folder := range element.Folders {
+			pathWatcher.AddPath(folder)
+			mFolders.Enable()
+			mFolders.AddSubMenuItem(folder, "Watching")
+		}
+	}
 
 	go func() {
 		for {
@@ -121,26 +201,31 @@ func onReady() {
 				SendNotification("Success", response+" created successfully")
 			case <-mAddFolder.ClickedCh:
 				// Select database option to use from list
-				db_name, _, err := dlgs.List("List", "Select item from list:", db_names)
+				db_name, db_name_bool, err := dlgs.List("List", "Select item from list:", db_names)
 				if err != nil {
 					// panic(err)
 					continue
 				}
 
 				// Add a folder to watch for changes
-				folder, _, err := dlgs.File("Select folder to watch", "", true)
+				folder, folderbool, err := dlgs.File("Select folder to watch", "", true)
 				if err != nil {
 					continue
 				}
 
-				// Add folder path to global box
-				box[db_name].AddFolder(folder)
+				if folderbool && db_name_bool {
+					// Add folder path to global box
+					box[db_name].AddFolder(folder)
 
-				// Add folder to database
-				mFolders.Enable()
-				mFolders.AddSubMenuItem(folder, "Watching")
+					// Add folder to watcher
+					pathWatcher.AddPath(folder)
 
-				SendNotification("Success", folder+" added to "+db_name)
+					// Add folder to database
+					mFolders.Enable()
+					mFolders.AddSubMenuItem(folder, "Watching")
+
+					SendNotification("Success", folder+" added to "+db_name)
+				}
 
 			case <-mQuit.ClickedCh:
 				fmt.Println("Requesting quit")

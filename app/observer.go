@@ -1,8 +1,7 @@
-package observer
+package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 
 	"github.com/fsnotify/fsnotify"
@@ -12,6 +11,7 @@ type Publisher interface {
 	Register(subscriber *Subscriber)
 	Unregister(subscriber *Subscriber)
 	notify(path string)
+	AddPath(path string)
 	Observe()
 }
 
@@ -24,7 +24,6 @@ type Subscriber interface {
 type PathWatcher struct {
 	subscribers []*Subscriber
 	watcher     *fsnotify.Watcher
-	Path        string
 }
 
 // register subscribers to the publisher
@@ -53,16 +52,9 @@ func (pw *PathWatcher) notify(path string) {
 	}
 }
 
-func (pw *PathWatcher) AddPath(watcher *fsnotify.Watcher, path string) {
-	files, err := ioutil.ReadDir(path)
-	if err != nil {
-		log.Fatal(err)
-	}
+func (pw *PathWatcher) AddPath(path string) {
 
-	for _, file := range files {
-		pw.notify(file.Name())
-	}
-	watcher.Add(path)
+	pw.watcher.Add(path)
 }
 
 // observe changes to the file system using the fsnotify library
@@ -73,7 +65,7 @@ func (pw *PathWatcher) Observe() {
 	}
 	defer watcher.Close()
 
-	watcher.Add(pw.Path)
+	// watcher.Add(pw.path)
 
 	pw.watcher = watcher
 
