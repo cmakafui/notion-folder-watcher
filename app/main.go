@@ -35,11 +35,12 @@ type WatchIndexer struct{}
 func (wi *WatchIndexer) receive(filePath string) {
 	folderpath, basename := filepath.Split(filePath)
 
-	ext := filepath.Ext(basename)
-
-	// Check if it's directory (could be a file without extention - edge case)
-	if ext == "" {
+	var ext string
+	// Check if it's directory
+	if isDirectory(filePath) {
 		ext = "Directory"
+	} else {
+		ext = filepath.Ext(basename)
 	}
 	name := strings.TrimSuffix(basename, ext)
 	// Remove trailing \
@@ -253,4 +254,15 @@ func SendNotification(title, message string) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+// isDirectory determines if a file represented
+// by `path` is a directory or not
+func isDirectory(path string) bool {
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+
+	return fileInfo.IsDir()
 }
